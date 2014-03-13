@@ -47,7 +47,7 @@ char *clip(char *s, char end) {
 }
 
 bool match(char* a, char* b) {
-    printf("\nmatching %s and %s\n", a, b);
+    //printf("\nmatching %s and %s\n", a, b);
     if (a == NULL && b == NULL) return true;
     if (a == NULL || b == NULL) return false;
 
@@ -64,7 +64,7 @@ bool match(char* a, char* b) {
 }
 
 bool match(char* a, const char* b) {
-    printf("\nmatching %s and %s\n", a, b);
+    //printf("\nmatching %s and %s\n", a, b);
     if (a == NULL && b == NULL) return true;
     if (a == NULL || b == NULL) return false;
 
@@ -187,7 +187,7 @@ void handle () {
         bool answered = false;
         for (int j = 0; j < i; j++) {
             if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "everybody") && match(parse[j].object, parse[i].object)) {
-                printf("yes, %s %s", subswap(parse[i].subject), parse[i].predicate);
+                printf("yes, %s %s", subswap(parse[i].subject), parse[j].predicate);
                 if (parse[i].object) {
                   printf(" %s.\n", parse[i].object);  
                 } else {
@@ -196,7 +196,7 @@ void handle () {
                 answered = true;
             }
             else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "nobody") && match(parse[j].object, parse[i].object)) {
-                printf("no, %s %s %s", parse[i].subject, dword(parse[i].subject), parse[i].predicate);
+                printf("no, %s %s %s", subswap(parse[i].subject), dword(parse[i].subject), parse[i].predicate);
                 if (parse[i].object) {
                   printf(" %s.\n", parse[i].object);  
                 } else {
@@ -206,14 +206,14 @@ void handle () {
             }
             else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, parse[i].subject) && match(parse[j].object, parse[i].object)) {
                 if (!parse[i].is_negative) {
-                    printf("yes, %s %s", parse[j].subject, parse[j].predicate);
+                    printf("yes, %s %s", subswap(parse[j].subject), parse[j].predicate);
                     if (parse[i].object) {
                       printf(" %s.\n", parse[i].object);  
                     } else {
                       printf("\n");  
                     }
                 } else {
-                    printf("no, %s %s %s", parse[j].subject, parse[i].dword, parse[j].predicate);
+                    printf("no, %s %s %s", subswap(parse[j].subject), parse[i].dword, parse[j].predicate);
                     if (parse[i].object) {
                       printf(" %s.\n", parse[i].object);  
                     } else {
@@ -267,8 +267,6 @@ void handle () {
         if (!answered && count == 0) {
             printf ("I don't know\n");
         }
-
-        printf ("%d\n", count);
 
         if (count == 1) {
             for (int j = 0; j < i; j++) {
