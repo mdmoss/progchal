@@ -5,7 +5,7 @@
 
 #define MAX 100
 
-void handle();
+void handle(int);
 
 int main() {
   int dialogues;
@@ -13,10 +13,8 @@ int main() {
   int i = 1;
     
   while (dialogues) {
-  
-    printf ("Dialogue #%d:", i);
+    handle(i);
     i++;
-    handle();
     dialogues--;
   }
 }
@@ -137,7 +135,7 @@ const char *dword(const char *sub) {
 
 char *deplural(char *word) {
     char *ret = (char *)malloc(strlen(word) + 1);
-    assert(ret != NULL);
+    //assert(ret != NULL);
     strcpy(ret, word);
     if (ret[strlen(word)-1] == 's') {
         ret[strlen(word)-1] = '\0';
@@ -151,7 +149,7 @@ char *deplural(char *word) {
 char *perhapsplural(char *word, char *subject) {
     if (!match(subject, "I") && !match(subject, "you")) return word;
     char *ret = (char *)malloc(strlen(word) + 1);
-    assert(ret != NULL);
+    //assert(ret != NULL);
     strcpy(ret, word);
     if (ret[strlen(word)-1] == 's') {
         ret[strlen(word)-1] = '\0';
@@ -162,10 +160,13 @@ char *perhapsplural(char *word, char *subject) {
     }
 }
 
-void handle () {
+void handle (int dialogue) {
+
+  bool contradiction = false;
 
   char input[MAX][MAX + 1];
   Line parse[MAX];
+  memset(parse, 0, sizeof(Line) * MAX);
   int lines = 0;
   do {
     fgets(input[lines], MAX + 1, stdin);
@@ -173,11 +174,14 @@ void handle () {
     lines++;
   } while (input[lines-1][strlen(input[lines-1])-1] != '!');
 
+  printf ("Dialogue #%d:\n", dialogue);
+
   /* Parse the lines */   
   for (int i = 0; i < lines; i++) {
-    if (strchr(input[i], '!')) continue; // This is malformed - probably the end
-
-    if (strchr(input[i], '.')) {
+    if (strchr(input[i], '!')) {
+        printf ("%s\n\n", input[i]);
+        continue;
+    } else if (strchr(input[i], '.')) {
       clip(input[i], '.');
       parse[i].is_statement = true;
       parse[i].subject = input[i];
@@ -201,6 +205,33 @@ void handle () {
         parse[i].object = fourth;
       }
 
+      /* Check for contradictions */
+      for (int j = 0; j < i; j++) {
+        if (match(parse[i].predicate, parse[j].predicate) && match(parse[i].object, parse[j].object)) {
+            if (parse[i].is_statement && parse[j].is_statement) {
+
+                if (match(parse[i].subject, "nobody") || match(parse[j].subject, "nobody")) {
+                    if ((!parse[i].is_negative &&  match(parse[j].subject, "nobody")) ||
+                        (!parse[j].is_negative &&  match(parse[i].subject, "nobody"))) {
+                            contradiction = true;
+                        }
+                } else if (match(parse[i].subject, "everybody") || match(parse[j].subject, "everybody")) {
+                    if ((parse[i].is_negative &&  match(parse[j].subject, "everybody")) ||
+                        (parse[j].is_negative &&  match(parse[i].subject, "everybody"))) {
+                            contradiction = true;
+                        }
+                } else if (match(parse[i].subject, parse[j].subject)) {
+                    if (parse[i].is_negative != parse[j].is_negative) {
+                            contradiction = true;
+                    }
+                }
+            }
+        }
+      }
+
+
+
+
     } else {
       printf ("%s\n", input[i]);
       clip(input[i], '?');
@@ -209,7 +240,10 @@ void handle () {
       parse[i].is_statement = false;
       parse[i].qword = input[i];
       
-      if (!strcmp(parse[i].qword, "do") || 
+      if (contradiction) {
+        printf ("I am abroad");
+
+      } else if (!strcmp(parse[i].qword, "do") || 
           !strcmp(parse[i].qword, "does")) {
         parse[i].subject = second;
         parse[i].predicate = third;
@@ -218,28 +252,28 @@ void handle () {
         /* Actually answer it */
         bool answered = false;
         for (int j = 0; j < i; j++) {
-            if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "everybody") && match(parse[j].object, parse[i].object)) {
-                printf("yes, %s %s", subswap(parse[i].subject), parse[j].predicate);
+            if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "everybody") && match(parse[j].object, parse[i].object) && !answered) {
+                printf("yes, %s %s", subswap(parse[i].subject), perhapsplural(parse[j].predicate, parse[i].subject));
                 if (parse[i].object) {
                   printf(" %s", parse[i].object);  
                 }
                 answered = true;
             }
-            else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "nobody") && match(parse[j].object, parse[i].object)) {
-                printf("no, %s %s %s", subswap(parse[i].subject), dword(parse[i].subject), parse[i].predicate);
+            else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, "nobody") && match(parse[j].object, parse[i].object) && !answered) {
+                printf("no, %s %s %s", subswap(parse[i].subject), dword(parse[i].subject), perhapsplural(parse[i].predicate, parse[i].subject));
                 if (parse[i].object) {
                   printf(" %s", parse[i].object);  
                 }
                 answered = true;
             }
-            else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, parse[i].subject) && match(parse[j].object, parse[i].object)) {
-                if (!parse[i].is_negative) {
-                    printf("yes, %s %s", subswap(parse[j].subject), parse[j].predicate);
+            else if (match(parse[j].predicate, parse[i].predicate) && match(parse[j].subject, parse[i].subject) && match(parse[j].object, parse[i].object) && !answered) {
+                if (!parse[j].is_negative) {
+                    printf("yes, %s %s", subswap(parse[j].subject), perhapsplural(parse[j].predicate, parse[j].subject));
                     if (parse[i].object) {
                       printf(" %s", parse[i].object);  
                     }
                 } else {
-                    printf("no, %s %s %s", subswap(parse[j].subject), parse[i].dword, parse[j].predicate);
+                    printf("no, %s %s %s", subswap(parse[j].subject), parse[j].dword, perhapsplural(parse[j].predicate, parse[j].subject));
                     if (parse[i].object) {
                       printf(" %s", parse[i].object);  
                     }
@@ -275,7 +309,7 @@ void handle () {
                 }
                 answered = true;
             } 
-            else if (parse[j].is_statement && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
+            else if (parse[j].is_statement && !parse[j].is_negative && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
                 count++;
             }
         }
@@ -286,7 +320,7 @@ void handle () {
 
         if (count == 1) {
             for (int j = 0; j < i; j++) {
-                if (parse[j].is_statement && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
+                if (parse[j].is_statement && !parse[j].is_negative && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
                     printf ("%s %s", subswap(parse[j].subject), parse[j].predicate);
                     if (parse[i].object) {
                       printf(" %s", parse[i].object);  
@@ -298,15 +332,15 @@ void handle () {
         if (count > 1) {
             int printed = 0;
             for (int j = 0; j < i; j++) {
-                if (parse[j].is_statement && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
+                if (parse[j].is_statement && !parse[j].is_negative && match(parse[j].predicate, parse[i].predicate) && match(parse[i].object, parse[j].object)) {
                     if (printed == 0) {
-                        printf ("%s", parse[j].subject);
+                        printf ("%s", subswap(parse[j].subject));
                         printed++;
                     } else if (printed == count - 1) {
-                        printf ("and %s", parse[j].subject);
+                        printf (" and %s", subswap(parse[j].subject));
                         printed++;
                     } else {
-                        printf (", %s", parse[j].subject);
+                        printf (", %s", subswap(parse[j].subject));
                         printed++;
                     }
                 } 
@@ -321,7 +355,8 @@ void handle () {
       } else if (!strcmp(parse[i].qword, "what")) {
         parse[i].dword = second;
         parse[i].subject = third;
-        assert(!strcmp(clip(third, ' '), "do"));
+        clip(third, ' ');
+        //assert(!strcmp(clip(third, ' '), "do"));
 
         /* Answer */
         int count = 0;
@@ -341,55 +376,60 @@ void handle () {
         }
         int printed = 0;
 
-        for (int j = 0; j < i; j++) {
-            if (match(parse[i].subject, parse[j].subject) || match(parse[j].subject, "everybody") || match(parse[j].subject, "nobody")) {
+        if (count == 0) {
+            printf ("I don't know");
+        } else {
+        
+            for (int j = 0; j < i; j++) {
+                if (match(parse[i].subject, parse[j].subject) || match(parse[j].subject, "everybody") || match(parse[j].subject, "nobody")) {
 
-                if (printed == 0) {
-                    printf ("%s", subswap(parse[i].subject));
-                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
-                        printf (" %s", dword(subswap(parse[i].subject)));
-                        printf (" %s", deplural(parse[j].predicate));
-                    } else {
-                        printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
-                    }
-                    if (parse[j].object) {
-                        printf (" %s", parse[j].object);
-                    }
-                    printed++;
-                    
+                    if (printed == 0) {
+                        printf ("%s", subswap(parse[i].subject));
+                        if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                            printf (" %s", dword(subswap(parse[i].subject)));
+                            printf (" %s", deplural(parse[j].predicate));
+                        } else {
+                            printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
+                        }
+                        if (parse[j].object) {
+                            printf (" %s", parse[j].object);
+                        }
+                        printed++;
+                        
 
-                } else if (printed == count - 1) {
-                    printf (", and");
-                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
-                        printf (" %s", dword(subswap(parse[i].subject)));
-                        printf (" %s", deplural(parse[j].predicate));
-                    } else {
-                        printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
-                    }
-                    if (parse[j].object) {
-                        printf (" %s", parse[j].object);
-                    }
-                    printed++;
+                    } else if (printed == count - 1) {
+                        printf (", and");
+                        if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                            printf (" %s", dword(subswap(parse[i].subject)));
+                            printf (" %s", deplural(parse[j].predicate));
+                        } else {
+                            printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
+                        }
+                        if (parse[j].object) {
+                            printf (" %s", parse[j].object);
+                        }
+                        printed++;
 
-                } else {
-                    printf (",");
-                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
-                        printf (" %s", dword(subswap(parse[i].subject)));
-                        printf (" %s", deplural(parse[j].predicate));
-                    } else {
-                        printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
+                    } else if (printed < count) {
+                        printf (",");
+                        if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                            printf (" %s", dword(subswap(parse[i].subject)));
+                            printf (" %s", deplural(parse[j].predicate));
+                        } else {
+                            printf (" %s", perhapsplural(parse[j].predicate, parse[i].subject));
+                        }
+                        if (parse[j].object) {
+                            printf (" %s", parse[j].object);
+                        }
+                        printed++;
+
                     }
-                    if (parse[j].object) {
-                        printf (" %s", parse[j].object);
-                    }
-                    printed++;
+
 
                 }
-
-
             }
-        }
-      } 
+          } 
+      }
       printf (".\n\n");
     }
 
