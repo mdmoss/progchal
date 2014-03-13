@@ -80,6 +80,23 @@ bool match(char* a, const char* b) {
     return strcmp(a, b) == 0;
 }
 
+bool match(const char* a, const char* b) {
+    //printf("\nmatching %s and %s\n", a, b);
+    if (a == NULL && b == NULL) return true;
+    if (a == NULL || b == NULL) return false;
+
+    int alen = strlen(a);
+    int blen = strlen(b);
+
+    if (alen == blen+1 && a[alen-1] == 's') {
+        return strncmp(a, b, blen) == 0;
+    } else if (blen == alen+1 && b[blen-1] == 's') {
+        return strncmp(a, b, alen) == 0;
+    }
+
+    return strcmp(a, b) == 0;
+}
+
 const char *subswap(char *sub) {
     if (match(sub, "I")) {
         return "you";
@@ -90,7 +107,24 @@ const char *subswap(char *sub) {
     return sub;
 }
 
+const char *subswap(const char *sub) {
+    if (match(sub, "I")) {
+        return "you";
+    }
+    if (match(sub, "you")) {
+        return "I";
+    }
+    return sub;
+}
+
 const char *dword(char *sub) {
+    if (match(sub, "I") || match (sub, "you")) {
+        return "don't";
+    }
+    return "doesn't";
+}
+
+const char *dword(const char *sub) {
     if (match(sub, "I") || match (sub, "you")) {
         return "don't";
     }
@@ -306,20 +340,75 @@ void handle () {
             }
         }
 
-
-
-
-
-
-
-
-
-
       } else if (!strcmp(parse[i].qword, "what")) {
         parse[i].dword = second;
         parse[i].subject = third;
         assert(!strcmp(clip(third, ' '), "do"));
         printf ("| dword: %s, sub: %s", parse[i].dword, parse[i].subject);
+
+        /* Answer */
+        int count = 0;
+        for (int j = 0; j < i; j++) {
+            if (match(parse[i].subject, parse[j].subject) || match(parse[j].subject, "everybody") || match(parse[j].subject, "nobody")) {
+                printf("%s\n", parse[j].subject);
+                /* This j applies - check for uniqueness */     
+                bool unique = true;
+                for (int k = 0; k < j; k++) {
+                    if (match(parse[j].predicate, parse[k].predicate) && match(parse[j].object, parse[k].object)) {
+                        unique = false;
+                    }
+                }
+                if (unique) {
+                    count++;
+                }
+            }
+        }
+        printf ("count: %d\n", count);
+        int printed = 0;
+
+        for (int j = 0; j < i; j++) {
+            if (match(parse[i].subject, parse[j].subject) || match(parse[j].subject, "everybody") || match(parse[j].subject, "nobody")) {
+
+                if (printed == 0) {
+                    printf ("%s", subswap(parse[i].subject));
+                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                        printf (" %s", dword(subswap(parse[i].subject)));
+                    }
+                    printf (" %s", deplural(parse[j].predicate));
+                    if (parse[j].object) {
+                        printf (" %s", parse[j].object);
+                    }
+                    printed++;
+                    
+
+                } else if (printed == count - 1) {
+                    printf (", and");
+                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                        printf (" %s", dword(subswap(parse[i].subject)));
+                    }
+                    printf (" %s", deplural(parse[j].predicate));
+                    if (parse[j].object) {
+                        printf (" %s", parse[j].object);
+                    }
+                    printed++;
+                    printf (".");
+
+                } else {
+                    printf (",");
+                    if (parse[j].is_negative || match(parse[j].subject, "nobody")) {
+                        printf (" %s", dword(subswap(parse[i].subject)));
+                    }
+                    printf (" %s", deplural(parse[j].predicate));
+                    if (parse[j].object) {
+                        printf (" %s", parse[j].object);
+                    }
+                    printed++;
+
+                }
+
+
+            }
+        }
       } 
 
       printf ("\n");
